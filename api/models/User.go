@@ -4,20 +4,20 @@ import (
 	"database/sql"
 	"errors"
 	"html"
+	"log"
 	"strings"
 	"time"
-
 	"github.com/badoux/checkmail"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
-	ID        uint32   
-	Nickname  string    
-	Email     string    
-	Password  string    
-	CreatedAt time.Time 
-	UpdatedAt time.Time 
+	ID        uint32
+	Nickname  string
+	Email     string
+	Password  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func Hash(password string) ([]byte, error) {
@@ -91,36 +91,49 @@ func (u *User) Validate(action string) error {
 	}
 }
 
-func (u *User) SaveUser(db *sql.DB)  (*User, error) {
+func (u *User) SaveUser(db *sql.DB) (*User, error) {
 
-	// var err error
-	// err = db.Debug().Create(&u).Error
-	// if err != nil {
-	// 	return &User{}, err
-	// }
+	var err error
+	result, err := db.Exec("INSERT INTO employee(nickname, email, password,created_at,updated_at) VALUES(?, ?, ?, ?, ?)", u.Nickname, u.Email, u.Password, u.CreatedAt, u.UpdatedAt)
+	if err != nil {
+		return &User{}, err
+	}
+	uid, _ := result.LastInsertId()
+	u.ID = uint32(uid)
 	return u, nil
 }
 
 func (u *User) FindAllUsers(db *sql.DB) (*[]User, error) {
 	var err error
+	user := User{}
 	users := []User{}
-	// _, err = db.Exec("INSERT INTO employee(name, city) VALUES(?, ?)", name, city)
-	// if err != nil {
-	// 	return &[]User{}, err
-	// }
+	rows, err := db.Query("SELECT id, nickname, email, password, created_at, updated_at FROM employee")
+	if err != nil {
+		panic(err.Error())
+	}
+	for rows.Next() {
+		err = rows.Scan(&user.ID, &user.Nickname, &user.Email, &user.Password, &user.CreatedAt, &user.UpdatedAt)
+		if err != nil {
+			log.Fatal(err.Error())
+		} else {
+			users = append(users, user)
+		}
+	}
 	return &users, err
 }
 
 func (u *User) FindUserByID(db *sql.DB, uid uint32) (*User, error) {
 	var err error
-	// err = db.Debug().Model(User{}).Where("id = ?", uid).Take(&u).Error
-	// if err != nil {
-	// 	return &User{}, err
-	// }
-	// if gorm.IsRecordNotFoundError(err) {
-	// 	return &User{}, errors.New("User Not Found")
-	// }
-	return u, err
+	user := User{}
+	result, err := db.Query("SELECT id, nickname, email, password, created_at, updated_at FROM employee WHERE id = ?",uid)
+	if err != nil {
+		panic(err.Error())
+	}
+		err = result.Scan(&user.ID, &user.Nickname, &user.Email, &user.Password, &user.CreatedAt, &user.UpdatedAt)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	return &user, err
 }
 
 func (u *User) UpdateAUser(db *sql.DB, uid uint32) (*User, error) {

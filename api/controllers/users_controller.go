@@ -16,12 +16,12 @@ import (
 
 func (server *Server) CreateUser(w http.ResponseWriter, r *http.Request) {
 
-	body, err := ioutil.ReadAll(r.Body)
+	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		responses.ERROR(w, http.StatusUnprocessableEntity, err)
 	}
-	user := models.User{}
-	err = json.Unmarshal(body, &user)
+	var user = models.User{}
+	err = json.Unmarshal(reqBody, &user)
 	if err != nil {
 		responses.ERROR(w, http.StatusUnprocessableEntity, err)
 		return
@@ -33,9 +33,8 @@ func (server *Server) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userCreated, err := user.SaveUser(server.DB)
-
 	if err != nil {
-
+		fmt.Print(err)
 		formattedError := formaterror.FormatError(err.Error())
 
 		responses.ERROR(w, http.StatusInternalServerError, formattedError)
