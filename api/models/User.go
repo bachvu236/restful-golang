@@ -93,7 +93,10 @@ func (u *User) Validate(action string) error {
 
 func (u *User) SaveUser(db *sql.DB) (*User, error) {
 
-	var err error
+	err := u.BeforeSave()
+	if err != nil {
+		log.Fatal(err)
+	}
 	result, err := db.Exec("INSERT INTO employee(nickname, email, password,created_at,updated_at) VALUES(?, ?, ?, ?, ?)", u.Nickname, u.Email, u.Password, u.CreatedAt, u.UpdatedAt)
 	if err != nil {
 		return &User{}, err
@@ -129,45 +132,38 @@ func (u *User) FindUserByID(db *sql.DB, uid uint32) (*User, error) {
 	if err != nil {
 		panic(err.Error())
 	}
-		err = result.Scan(&user.ID, &user.Nickname, &user.Email, &user.Password, &user.CreatedAt, &user.UpdatedAt)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
+	if !result.Next() {
+		return &user,errors.New("no data found")
+	}
+	result.Scan(&user.ID, &user.Nickname, &user.Email, &user.Password, &user.CreatedAt, &user.UpdatedAt)
+
 	return &user, err
 }
 
 func (u *User) UpdateAUser(db *sql.DB, uid uint32) (*User, error) {
-	// To hash the password
-	// err := u.BeforeSave()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// db = db.Debug().Model(&User{}).Where("id = ?", uid).Take(&User{}).UpdateColumns(
-	// 	map[string]interface{}{
-	// 		"password":  u.Password,
-	// 		"nickname":  u.Nickname,
-	// 		"email":     u.Email,
-	// 		"updated_at": time.Now(),
-	// 	},
-	// )
-	// if db.Error != nil {
-	// 	return &User{}, db.Error
-	// }
-	// This is the display the updated user
-	// err = db.Debug().Model(&User{}).Where("id = ?", uid).Take(&u).Error
-	// if err != nil {
-	// 	return &User{}, err
-	// }
+	user := User{}
+	existedUser,_ := db.Query("SELECT * FROM employee WHERE id = ?", uid)
+	if !existedUser.Next(){
+		return &user,errors.New("user not found")
+	}
+	res,err := db.Exec("UPDATE employee e SET e.nickname = ?, e.email= ?, e.updated_at = ? WHERE id = ?", u.Nickname, u.Email, time.Now(),uid)
+	if nil != err {
+		return &User{},err
+	}
+	id,_ := res.LastInsertId()
+	u.ID = uint32(id)
 	return u, nil
 }
 
 func (u *User) DeleteAUser(db *sql.DB, uid uint32) (int64, error) {
 
-	// db = db.Debug().Model(&User{}).Where("id = ?", uid).Take(&User{}).Delete(&User{})
-
-	// if db.Error != nil {
-	// 	return 0, db.Error
-	// }
-	// return db.RowsAffected, nil
-	return 0, nil
+	res,err := db.Exec("DELETE FROM employee WHERE id = ?", uid)
+	if err != nil{
+		return 0, err
+	}
+	affectedRow,err  := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return affectedRow, nil
 }

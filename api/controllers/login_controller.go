@@ -2,11 +2,14 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"github.com/bachvu236/go-jwt/api/exception"
 	"github.com/bachvu236/go-jwt/api/models"
 	"github.com/bachvu236/go-jwt/api/response"
-	"github.com/bachvu236/go-jwt/api/exception"
+	"github.com/bachvu236/go-jwt/api/security"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (server *Server) Login(w http.ResponseWriter, r *http.Request) {
@@ -39,18 +42,21 @@ func (server *Server) Login(w http.ResponseWriter, r *http.Request) {
 
 func (server *Server) SignIn(email, password string) (string, error) {
 
-	var err error
-
-	// user := models.User{}
-
-	// err = server.DB.Debug().Model(models.User{}).Where("email = ?", email).Take(&user).Error
-	// if err != nil {
+	user := models.User{}
+	fmt.Print(email)
+	result,err := server.DB.Query("SELECT * FROM employee WHERE email = ?", email )
+	if err != nil {
 		return "", err
-	// }
-	// err = models.VerifyPassword(user.Password, password)
-	// if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
-	// 	return "", err
-	// }
-	// return auth.CreateToken(user.ID)
+	}
+	if !result.Next() {
+		return "No data found",err
+	}
+	result.Scan(&user.ID, &user.Nickname, &user.Email, &user.Password, &user.CreatedAt, &user.UpdatedAt)
+
+	err = models.VerifyPassword(user.Password, password)
+	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
+		return "", err
+	}
+	return auth.CreateToken(user.ID)
 	
 }
